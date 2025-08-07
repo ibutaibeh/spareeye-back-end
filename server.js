@@ -17,9 +17,11 @@ app.use(express.json())
 const testJwtRouter = require('./controllers/test-jwt')
 const authRouter = require('./controllers/auth')
 const userRouter = require('./controllers/users')
+const requestRouter = require('./controllers/requests')
 
 app.use('/auth',authRouter)
 app.use('/users',userRouter)
+app.use('/requests',requestRouter)
 app.use('/test-jwt',testJwtRouter)
 
 app.listen(PORT,()=>{
