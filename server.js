@@ -39,5 +39,5 @@ app.use('/requests',requestRouter)
 app.use('/test-jwt',testJwtRouter)
 
 app.listen(PORT,()=>{
-    console.log('The Server is running on port 3000')
+    console.log(`The Server is running on port ${PORT}`)
 })
