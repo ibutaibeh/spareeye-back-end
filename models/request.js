@@ -39,7 +39,7 @@ const requestSchema = new mongoose.Schema(
       required: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true } //this is to let MongoDB track the record created data and updated data
 );
 
 const Request = mongoose.model('Request', requestSchema);
