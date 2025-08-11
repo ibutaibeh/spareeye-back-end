@@ -25,11 +25,10 @@ const carDetailsSchema = new mongoose.Schema(
 const requestSchema = new mongoose.Schema(
   {
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    date: {
-      type: Date,
-      required: true,
+    name: {
+      type: String,
     },
-    carDetails: [carDetailsSchema],
+    carDetails: carDetailsSchema,
     image: {
       type: String,
       required: true,
