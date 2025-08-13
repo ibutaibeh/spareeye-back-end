@@ -127,8 +127,8 @@ async function analyzeWithOpenAI({ userText, images }) {
       {
         role: "system",
         content:
-          "You are an expert in diagnosing damaged mechanical parts from images. " +
-          "Return JSON with: diagnosis, severity, likely_part_name, repair_steps[], tools_needed[], safety_notes[], recommended_sites[].",
+          "You are an expert in diagnosing damaged mechanical parts from images. look for spare part for this damaged item from ebay or other relevent websites and provide the spare part link make sure to provide the correct link to the correct spare part based on the car details provided" +
+          "Return JSON with: diagnosis, severity, likely_part_name, repair_steps[], tools_needed[], safety_notes[], recommended_websites[].",
       },
       {
         role: "user",

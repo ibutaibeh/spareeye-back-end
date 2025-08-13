@@ -1,6 +1,20 @@
 // models/request.js
 const mongoose = require('mongoose');
 
+
+const messagesSchema = new mongoose.Schema(
+  {
+    role: {
+      type: String,
+      required: true
+    },
+    text: {
+      type: String,
+      required: true
+    }
+  }
+)
+
 const carDetailsSchema = new mongoose.Schema(
   {
     carType: {
@@ -37,6 +51,7 @@ const requestSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    messages: [messagesSchema]
   },
   { timestamps: true } //this is to let MongoDB track the record created data and updated data
 );
