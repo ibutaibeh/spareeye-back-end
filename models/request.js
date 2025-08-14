@@ -45,7 +45,6 @@ const requestSchema = new mongoose.Schema(
     carDetails: carDetailsSchema,
     image: {
       type: String,
-      required: true,
     },
     description: {
       type: String,
