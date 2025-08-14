@@ -54,6 +54,14 @@ router.post('/sign-in', async(req,res)=>{
     } catch (error) {
         res.status(500).json({error: error.message})
     }
-})
+});
+
+exports.getProfile = (req, res) => {
+    try {
+        res.json({ user: req.user });
+    } catch (error) { 
+        res.status(500).json({ error: "Failed To Load Profile Data"});
+    }
+};
 
 module.exports = router;

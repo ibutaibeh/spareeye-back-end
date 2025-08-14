@@ -7,7 +7,8 @@ const userSchema = new mongoose.Schema({
     },
     email:{
         type: String,
-        required:true
+        required:true,
+        unique: true
     },
     hashedPassword:{
         type: String,
@@ -15,8 +16,9 @@ const userSchema = new mongoose.Schema({
     },
     role:{
         type: String,
-    }
-});
+    },
+}, {timestamps: true });
+
 
 userSchema.set('toJSON',{
     transform: (document, returnedObject)=>{
