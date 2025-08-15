@@ -4,7 +4,7 @@ const express = require('express')
 const app= express();
 const mongoose = require('mongoose')
 const cors = require('cors')
-const PORT = process.env.PORT || 3000
+const port = process.env.PORT || 3000
 mongoose.connect(process.env.MONGODB_URI);
 mongoose.connection.on('connected',()=>{
     console.log(`Connected to MongoDB ${mongoose.connection.name}`)
@@ -37,6 +37,6 @@ app.use('/users',userRouter)
 app.use('/requests',requestRouter)
 app.use('/test-jwt',testJwtRouter)
 
-app.listen(PORT,()=>{
-    console.log(`The Server is running on port ${PORT}`)
+app.listen(port,()=>{
+    console.log(`The Server is running on port ${port}`)
 })
