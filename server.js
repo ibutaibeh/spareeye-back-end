@@ -49,14 +49,12 @@ const authRouter = require("./controllers/auth");
 const userRouter = require("./controllers/users");
 const requestRouter = require("./controllers/requests");
 const settingRouter = require("./controllers/settings");
-const ttsRouter = require("./controllers/tts");
 
 app.use("/auth", authRouter);
 app.use("/users", userRouter);
 app.use("/requests", requestRouter);
 app.use("/test-jwt", testJwtRouter);
 app.use("/settings", settingRouter);
-app.use("/tts", ttsRouter);
 
 // --- Start ---
 app.listen(port, () => {
