@@ -1,28 +1,81 @@
+// controllers/requests.js
 const express = require("express");
-const multer = require("multer");
 const OpenAI = require("openai");
 const verifyToken = require("../middlewares/verify-token.js");
 const Request = require("../models/request.js");
 const router = express.Router();
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+const fsp = fs.promises;
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+/* ---------------- Ensure user upload dir ---------------- */
+function ensureUserDir(userId) {
+  const dir = path.join(__dirname, "..", "uploads", String(userId));
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+/* ---------------- Disk storage ---------------- */
+const storage = multer.diskStorage({
+  destination: function (req, _file, cb) {
+    const dir = ensureUserDir(req.user._id); // verifyToken must run first
+    cb(null, dir);
+  },
+  filename: function (_req, file, cb) {
+    const timestamp = Date.now();
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
+    cb(null, `${timestamp}-${safeName}`);
+  },
+});
+
+const fileFilter = (_req, file, cb) => {
+  const ok = ["image/jpeg", "image/png", "image/webp"].includes(file.mimetype);
+  cb(ok ? null : new Error("UNSUPPORTED_FILE_TYPE"), ok);
+};
+
+const uploadPersistent = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024, files: 6 },
+  fileFilter,
+});
+
+/* ---------------- Memory storage for optional inline analyze ---------------- */
+const uploadMemory = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 6 },
+  fileFilter,
+});
+
+/* ---------------- Public URL helper ---------------- */
+function publicUrlFromDisk(filePathAbs) {
+  // absolute -> "/uploads/<userId>/<filename>"
+  const idx = filePathAbs.lastIndexOf(path.sep + "uploads" + path.sep);
+  const rel = filePathAbs.slice(idx).replace(/\\/g, "/");
+  return rel.startsWith("/uploads") ? rel : `/uploads${rel}`;
+}
+
+/* ---------------- CRUD ---------------- */
 router.post("/", verifyToken, async (req, res) => {
   try {
     req.body.owner = req.user._id;
     const request = await Request.create(req.body);
-    request._doc.owner = request.user;
-    res.status(201).json(request);
+    const populated = await Request.findById(request._id).populate("owner");
+    res.status(201).json(populated);
   } catch (err) {
-    res.status(500).json({ err: err.message });
+    // validation errors (e.g., missing required carDetails/description) should be 400
+    const status = err?.name === "ValidationError" ? 400 : 500;
+    res.status(status).json({ err: err.message });
   }
 });
 
 router.get("/", verifyToken, async (req, res) => {
   try {
-    const requests = await Request.find({owner: req.user._id})
+    const requests = await Request.find({ owner: req.user._id })
       .populate("owner")
       .sort({ createdAt: "desc" });
     res.status(200).json(requests);
@@ -31,12 +84,9 @@ router.get("/", verifyToken, async (req, res) => {
   }
 });
 
-router.get('/:requestId', verifyToken, async (req, res) => {
+router.get("/:requestId", verifyToken, async (req, res) => {
   try {
-    // populate owner of request
-    const request = await Request.findById(req.params.requestId).populate([
-      'owner',
-    ]);
+    const request = await Request.findById(req.params.requestId).populate(["owner"]);
     res.status(200).json(request);
   } catch (err) {
     res.status(500).json({ err: err.message });
@@ -45,25 +95,13 @@ router.get('/:requestId', verifyToken, async (req, res) => {
 
 router.put("/:requestId", verifyToken, async (req, res) => {
   try {
-    // Find the request:
     const request = await Request.findById(req.params.requestId);
-
-    // Check permissions:
     if (!request.owner.equals(req.user._id)) {
       return res.status(403).send("You're not allowed to do that!");
     }
 
-    // Update request:
-    const updatedRequest = await Request.findByIdAndUpdate(
-      req.params.requestId,
-      req.body,
-      { new: true }
-    );
-
-    // Append req.user to the owner property:
+    const updatedRequest = await Request.findByIdAndUpdate(req.params.requestId, req.body, { new: true });
     updatedRequest._doc.owner = req.user;
-
-    // Issue JSON response:
     res.status(200).json(updatedRequest);
   } catch (err) {
     res.status(500).json({ err: err.message });
@@ -73,11 +111,9 @@ router.put("/:requestId", verifyToken, async (req, res) => {
 router.delete("/:requestId", verifyToken, async (req, res) => {
   try {
     const request = await Request.findById(req.params.requestId);
-
     if (!request.owner.equals(req.user._id)) {
       return res.status(403).send("You're not allowed to do that!");
     }
-
     const deletedRequest = await Request.findByIdAndDelete(req.params.requestId);
     res.status(200).json(deletedRequest);
   } catch (err) {
@@ -85,25 +121,62 @@ router.delete("/:requestId", verifyToken, async (req, res) => {
   }
 });
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024, files: 6 }, // 10MB each, max 6
-  fileFilter: (_req, file, cb) => {
-    const ok = ["image/jpeg", "image/png", "image/webp"].includes(file.mimetype);
-    cb(ok ? null : new Error("UNSUPPORTED_FILE_TYPE"), ok);
-  },
+/* ---------------- Upload images (persist) ---------------- */
+router.post("/uploads/images", verifyToken, uploadPersistent.array("images", 6), (req, res) => {
+  try {
+    const urls = (req.files || []).map((file) => `/uploads/${req.user._id}/${file.filename}`);
+    res.json({ urls });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Image upload failed" });
+  }
 });
 
-
-router.post("/analyze", upload.array("images"), async (req, res) => {
+/* ---------------- Analyze: accepts urls OR inline files ---------------- */
+router.post("/analyze", verifyToken, uploadMemory.array("images"), async (req, res) => {
   try {
     const userText = req.body.userText || "";
-    const images = req.files || [];
+    const providedUrls = Array.isArray(req.body.imageUrls)
+      ? req.body.imageUrls
+      : (typeof req.body.imageUrls === "string" && req.body.imageUrls ? JSON.parse(req.body.imageUrls) : []);
 
-    const analysis = await analyzeWithOpenAI({ userText, images });
+    // If inline files sent, persist them first
+    const savedUrls = [];
+    if (req.files && req.files.length) {
+      const uid = req.user._id;
+      const dir = ensureUserDir(uid);
+      for (const file of req.files) {
+        const ts = Date.now();
+        const safe = (file.originalname || "image").replace(/[^a-zA-Z0-9._-]/g, "_");
+        const abs = path.join(dir, `${ts}-${safe}`);
+        await fsp.writeFile(abs, file.buffer);
+        savedUrls.push(publicUrlFromDisk(abs));
+      }
+    }
 
-    // Mocked result matched to your frontend shape:
-    res.status(200).json({ result: analysis });
+    const allUrls = [...providedUrls, ...savedUrls];
+
+    // Convert local /uploads URLs into data URLs for OpenAI
+    async function toDataUrl(publicUrl) {
+      const abs = path.join(__dirname, "..", publicUrl);
+      const buf = await fsp.readFile(abs);
+      const lower = publicUrl.toLowerCase();
+      const mime = lower.endsWith(".png") ? "image/png" : lower.endsWith(".webp") ? "image/webp" : "image/jpeg";
+      return `data:${mime};base64,${buf.toString("base64")}`;
+    }
+
+    const imageDataUrls = [];
+    for (const u of allUrls) {
+      if (u.startsWith("/uploads/")) {
+        imageDataUrls.push(await toDataUrl(u));
+      } else if (/^https?:\/\//i.test(u)) {
+        imageDataUrls.push(u); // pass remote URL directly
+      }
+    }
+
+    const analysis = await analyzeWithOpenAI({ userText, imageDataUrls });
+
+    res.status(200).json({ result: analysis, imageUrls: allUrls });
   } catch (err) {
     if (err.message === "UNSUPPORTED_FILE_TYPE") {
       return res.status(400).json({ error: "Only JPG, PNG, and WEBP are allowed." });
@@ -111,46 +184,34 @@ router.post("/analyze", upload.array("images"), async (req, res) => {
     if (err.code === "LIMIT_FILE_SIZE") {
       return res.status(413).json({ error: "One or more files exceed 10MB." });
     }
+    console.error(err);
     res.status(500).json({ error: "Failed to analyze." });
   }
 });
 
-async function analyzeWithOpenAI({ userText, images }) {
-  const imageDataUrls = images.map((file) => {
-    const base64 = file.buffer.toString("base64");
-    return `data:${file.mimetype};base64,${base64}`;
-  });
-
+async function analyzeWithOpenAI({ userText, imageDataUrls }) {
+  const imagesContent = imageDataUrls.map((url) => ({ type: "image_url", image_url: { url } }));
   const response = await openai.chat.completions.create({
     model: "gpt-4o",
     messages: [
       {
         role: "system",
         content:
-          "You are an expert in diagnosing damaged mechanical parts from images. look for spare part for this damaged item from ebay or other relevent websites and provide the spare part link make sure to provide the correct link to the correct spare part based on the car details provided" +
+          "You are an expert in diagnosing damaged mechanical parts from images. " +
           "Return JSON with: diagnosis, severity, likely_part_name, repair_steps[], tools_needed[], safety_notes[], recommended_websites[].",
       },
       {
         role: "user",
-        content: [
-          { type: "text", text: userText || "Analyze these images and describe the issue." },
-          ...imageDataUrls.map((url) => ({
-            type: "image_url",
-            image_url: { url },
-          })),
-        ],
+        content: [{ type: "text", text: userText || "Analyze these images and describe the issue." }, ...imagesContent],
       },
     ],
-    response_format: { type: "json_object" }, // ensures valid JSON
+    response_format: { type: "json_object" },
   });
 
-  const raw = response.choices[0].message.content;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    throw new Error("Invalid JSON returned from OpenAI");
-  }
+  const raw = response.choices?.[0]?.message?.content || "{}";
+  return JSON.parse(raw);
 }
+
 
 
 module.exports = router;

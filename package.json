@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/ibutaibeh/spareeye-back-end#readme",
   "dependencies": {
+    "@aws-sdk/client-polly": "^3.864.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
@@ -27,6 +28,7 @@
     "method-override": "^3.0.0",
     "mongoose": "^8.17.0",
     "multer": "^2.0.2",
+    "node-fetch": "^3.3.2",
     "openai": "^5.12.2"
   }
 }
