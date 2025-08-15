@@ -6,7 +6,7 @@ const express = require("express");
 const app = express();
 const mongoose = require("mongoose");
 const cors = require("cors");
-const PORT = process.env.PORT || 3000;
+const port = process.env.PORT || 3000;
 const path = require("path");
 
 // --- DB ---
@@ -59,6 +59,6 @@ app.use("/settings", settingRouter);
 app.use("/tts", ttsRouter);
 
 // --- Start ---
-app.listen(PORT, () => {
-  console.log(`The Server is running on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`The Server is running on port ${port}`);
 });
