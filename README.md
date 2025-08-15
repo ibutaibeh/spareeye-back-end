@@ -1,4 +1,4 @@
-![SpareEye Logo](/spareeye-back-end/assests/SpareEye.jpg)
+![SpareEye Logo](assets/SpareEye.jpg)
 
 ## What is SpareEye?
 SpareEye is an intelligent car repair assistance platform built using the MERN stack.
@@ -22,15 +22,14 @@ Cost-effective — Avoid unnecessary repairs by getting accurate insights first.
 
 + `Tailwind CSS` — Utility-first CSS framework for creating a responsive and modern UI quickly.
 ## *References*
-+ [Project GitHub Repo Backend]()
-+ [Project GitHub Repo Frontend]()
-+ [Project GitHub Trello]()
-+ [Project GitHub Figma]()
-+ [ERD]()
-+ [Project Deploy - Render.io]()
++ [Project GitHub Repo Backend](https://github.com/ibutaibeh/spareeye-back-end)
++ [Project GitHub Repo Frontend](https://github.com/ibutaibeh/spareeye-front-end)
++ [Project GitHub Trello](https://trello.com/b/ZW8N00AM/spareeye)
++ [Project Deploy - Render.io](https://spareeye.onrender.com)
 
 ## What is Next?
-+
++ Adding more Settings ( Ai voice changer, Themes )
++ Adding Experts to review requests and share their comments.
 
 ### *Team :*
 + *Mohammed* 
