@@ -23,7 +23,7 @@ function ensureUserDir(userId) {
 /* ---------------- Disk storage ---------------- */
 const storage = multer.diskStorage({
   destination: function (req, _file, cb) {
-    const dir = ensureUserDir(req.user._id); // verifyToken must run first
+    const dir = ensureUserDir(req.user._id);
     cb(null, dir);
   },
   filename: function (_req, file, cb) {
@@ -44,7 +44,7 @@ const uploadPersistent = multer({
   fileFilter,
 });
 
-/* ---------------- Memory storage for optional inline analyze ---------------- */
+/* ---------------- Memory storage ---------------- */
 const uploadMemory = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024, files: 6 },
@@ -53,7 +53,6 @@ const uploadMemory = multer({
 
 /* ---------------- Public URL helper ---------------- */
 function publicUrlFromDisk(filePathAbs) {
-  // absolute -> "/uploads/<userId>/<filename>"
   const idx = filePathAbs.lastIndexOf(path.sep + "uploads" + path.sep);
   const rel = filePathAbs.slice(idx).replace(/\\/g, "/");
   return rel.startsWith("/uploads") ? rel : `/uploads${rel}`;
@@ -67,7 +66,6 @@ router.post("/", verifyToken, async (req, res) => {
     const populated = await Request.findById(request._id).populate("owner");
     res.status(201).json(populated);
   } catch (err) {
-    // validation errors (e.g., missing required carDetails/description) should be 400
     const status = err?.name === "ValidationError" ? 400 : 500;
     res.status(status).json({ err: err.message });
   }
@@ -140,7 +138,7 @@ router.post("/analyze", verifyToken, uploadMemory.array("images"), async (req, r
       ? req.body.imageUrls
       : (typeof req.body.imageUrls === "string" && req.body.imageUrls ? JSON.parse(req.body.imageUrls) : []);
 
-    // If inline files sent, persist them first
+    // If inline files sent, update them first
     const savedUrls = [];
     if (req.files && req.files.length) {
       const uid = req.user._id;
@@ -156,7 +154,6 @@ router.post("/analyze", verifyToken, uploadMemory.array("images"), async (req, r
 
     const allUrls = [...providedUrls, ...savedUrls];
 
-    // Convert local /uploads URLs into data URLs for OpenAI
     async function toDataUrl(publicUrl) {
       const abs = path.join(__dirname, "..", publicUrl);
       const buf = await fsp.readFile(abs);
@@ -170,7 +167,7 @@ router.post("/analyze", verifyToken, uploadMemory.array("images"), async (req, r
       if (u.startsWith("/uploads/")) {
         imageDataUrls.push(await toDataUrl(u));
       } else if (/^https?:\/\//i.test(u)) {
-        imageDataUrls.push(u); // pass remote URL directly
+        imageDataUrls.push(u);
       }
     }
 
@@ -211,7 +208,5 @@ async function analyzeWithOpenAI({ userText, imageDataUrls }) {
   const raw = response.choices?.[0]?.message?.content || "{}";
   return JSON.parse(raw);
 }
-
-
 
 module.exports = router;

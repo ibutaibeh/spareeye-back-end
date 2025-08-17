@@ -22,7 +22,7 @@ router.get('/:userId', verifyToken, async (req, res) => {
     }
 
     let doc = await Settings.findOne({ user: req.params.userId });
-    if (!doc) doc = await Settings.create({ user: req.params.userId }); // create defaults
+    if (!doc) doc = await Settings.create({ user: req.params.userId });
 
     res.json(doc);
   } catch (error) {

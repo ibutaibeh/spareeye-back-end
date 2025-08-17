@@ -4,7 +4,7 @@ const router = express.Router();
 const User = require('../models/user');
 const verifyToken = require('../middlewares/verify-token');
 
-// GET /api/users/:userId (already in your code)
+// GET /users/:userId
 router.get('/:userId', verifyToken, async (req, res) => {
   try {
     if (String(req.user._id) !== String(req.params.userId)) {
@@ -20,10 +20,7 @@ router.get('/:userId', verifyToken, async (req, res) => {
   }
 });
 
-/**
- * PUT /api/users/:userId
- * Update username/email (self-only)
- */
+// PUT /users/:userId
 router.put('/:userId', verifyToken, async (req, res) => {
   try {
     if (String(req.user._id) !== String(req.params.userId)) {
@@ -45,10 +42,7 @@ router.put('/:userId', verifyToken, async (req, res) => {
   }
 });
 
-/**
- * PUT /api/users/:userId/password
- * Change password (self-only)
- */
+// PUT /users/:userId/password
 router.put('/:userId/password', verifyToken, async (req, res) => {
   try {
     if (String(req.user._id) !== String(req.params.userId)) {
